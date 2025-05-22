@@ -137,7 +137,7 @@ ANGLE_MAX = 45.0
 ANGLE_TOLERANCE = 1.0
 
 # Posiciones de muescas para resortes (en metros)
-NOTCH_POSITIONS = [0.10, 0.20, 0.30]
+NOTCH_POSITIONS = [0.055, 0.105, 0.165]
 
 # Constante elástica por banda (k) (en N/m)
 K_ELASTIC = 0.0338
