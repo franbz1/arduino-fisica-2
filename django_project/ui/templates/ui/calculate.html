@@ -1,0 +1,25 @@
+{% extends 'ui/base.html' %}
+
+{% block title %}Calcular Lanzamiento - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Calcular Parámetros de Lanzamiento</h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">Esta funcionalidad se implementará próximamente.</p>
+                <div class="alert alert-info">
+                    <p>Aquí se implementará el formulario para calcular los parámetros de lanzamiento en base a la distancia objetivo.</p>
+                </div>
+                
+                <a href="{% url 'ui:ping' %}" class="btn btn-primary">
+                    Ir a la Prueba de Conexión
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

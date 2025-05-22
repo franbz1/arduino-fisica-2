@@ -1,9 +1,6 @@
 #include <Arduino.h>
 #include "settings.h"
 #include "serial_handler.h"
-#include "mpu6050_handler.h"
-#include "servo_controller.h"
-#include "utils.h"
 
 // LED indicador para estados
 const int STATUS_LED = 13;
@@ -11,9 +8,6 @@ const int STATUS_LED = 13;
 // Tiempo mínimo entre lecturas de comandos (ms)
 const unsigned long CMD_INTERVAL = 50;
 unsigned long lastCmdTime = 0;
-
-// Temporizador para detectar timeouts
-SimpleTimer cmdTimer;
 
 void setup() {
   // Inicializar LED de estado
@@ -23,22 +17,11 @@ void setup() {
   // Inicializar comunicación serial
   setupSerial();
   
-  // Inicializar MPU6050
-  if (!setupMPU6050()) {
-    // Parpadear LED para indicar error de MPU
-    while (true) {
-      digitalWrite(STATUS_LED, HIGH);
-      delay(200);
-      digitalWrite(STATUS_LED, LOW);
-      delay(200);
-    }
-  }
-  
-  // Inicializar servos
-  setupServos();
-  
   // Todo inicializado correctamente
   digitalWrite(STATUS_LED, LOW);
+  
+  // Mensaje de bienvenida
+  Serial.println("Sistema listo para recibir comandos");
 }
 
 void loop() {
@@ -53,6 +36,10 @@ void loop() {
     switch (cmd.type) {
       case CMD_PING:
         sendResponse("PONG");
+        // Parpadeo breve del LED para indicar recepción
+        digitalWrite(STATUS_LED, HIGH);
+        delay(50);
+        digitalWrite(STATUS_LED, LOW);
         break;
         
       case CMD_SET_ANGLE:
@@ -60,27 +47,21 @@ void loop() {
         if (cmd.value < ANGLE_MIN || cmd.value > ANGLE_MAX) {
           sendResponse("ANGLE_ERR");
         } else {
-          // Iniciar timer para timeout
-          cmdTimer.start();
-          
-          // Mover al ángulo
-          bool success = moveToAngle(cmd.value);
-          
-          // Enviar respuesta
-          sendResponse(success ? "ANGLE_OK" : "ANGLE_ERR");
+          // Por ahora, solo confirmamos que recibimos el comando sin mover el servo
+          sendResponse("ANGLE_OK");
+          Serial.print("Ángulo recibido: ");
+          Serial.println(cmd.value);
         }
         break;
         
       case CMD_LOAD:
-        // Cargar mecanismo
-        bool loadSuccess = loadMechanism();
-        sendResponse(loadSuccess ? "LOAD_OK" : "LOAD_ERR");
+        // Solo confirmamos el comando, sin controlar servos
+        sendResponse("LOAD_OK");
         break;
         
       case CMD_FIRE:
-        // Disparar mecanismo
-        bool fireSuccess = fireMechanism();
-        sendResponse(fireSuccess ? "FIRE_OK" : "FIRE_ERR");
+        // Solo confirmamos el comando, sin controlar servos
+        sendResponse("FIRE_OK");
         break;
         
       case CMD_NONE:

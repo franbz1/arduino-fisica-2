@@ -96,12 +96,21 @@ class SerialClient:
             SerialTimeoutError: Si no se recibe respuesta en el tiempo establecido
         """
         self.ensure_connected()
+        
+        # Leer respuesta del buffer
         response = self.serial.readline()
         
         if not response:
             raise SerialTimeoutError("No se recibió respuesta del dispositivo")
-            
-        return response.decode().strip()
+        
+        # Decodificar respuesta y eliminar espacios y caracteres de control
+        decoded = response.decode().strip()
+        
+        # Log para debug
+        print(f"Respuesta cruda recibida: {repr(response)}")
+        print(f"Respuesta decodificada: '{decoded}'")
+        
+        return decoded
     
     def send_and_read(self, cmd):
         """

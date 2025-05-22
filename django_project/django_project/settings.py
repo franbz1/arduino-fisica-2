@@ -127,7 +127,7 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Configuraciones específicas para el proyecto de lanzador
-SERIAL_PORT = "COM3"  # Puerto por defecto, cambiar según sistema
+SERIAL_PORT = "COM5"  # Puerto por defecto, cambiar según sistema
 SERIAL_BAUDRATE = 9600
 SERIAL_TIMEOUT = 2  # segundos
 

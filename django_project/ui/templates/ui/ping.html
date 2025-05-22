@@ -1,0 +1,64 @@
+{% extends 'ui/base.html' %}
+
+{% block title %}Prueba de Conexión - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Prueba de Comunicación Serial</h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">Esta página te permite comprobar la conexión con el Arduino enviando un comando PING.</p>
+                
+                {% if connected %}
+                    <div class="alert alert-success">
+                        <h4><i class="bi bi-check-circle-fill"></i> ¡Conexión Exitosa!</h4>
+                        <p>El Arduino respondió correctamente con <strong>{{ response }}</strong></p>
+                    </div>
+                {% elif raw_response %}
+                    <div class="alert alert-warning">
+                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Respuesta Incorrecta</h4>
+                        <p>El Arduino respondió pero no envió "PONG".</p>
+                        <p>Respuesta recibida: <code>"{{ raw_response }}"</code></p>
+                    </div>
+                {% elif error %}
+                    <div class="alert alert-danger">
+                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Error de Conexión</h4>
+                        <p>{{ error }}</p>
+                    </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <h5>Posibles soluciones si hay problemas:</h5>
+                    <ul>
+                        <li>Verifica que el Arduino esté conectado al puerto correcto</li>
+                        <li>Asegúrate de que el código correcto esté cargado en el Arduino</li>
+                        <li>Revisa la configuración del puerto serial en el archivo settings.py</li>
+                        <li>Verifica que no haya caracteres adicionales en la respuesta (como espacios o saltos de línea)</li>
+                    </ul>
+                </div>
+                
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Enviar PING al Arduino
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4">
+                    <h5>Configuración Actual:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item">Puerto Serial: <code>{{ settings.SERIAL_PORT }}</code></li>
+                        <li class="list-group-item">Baudrate: <code>{{ settings.SERIAL_BAUDRATE }}</code></li>
+                        <li class="list-group-item">Timeout: <code>{{ settings.SERIAL_TIMEOUT }} segundos</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
