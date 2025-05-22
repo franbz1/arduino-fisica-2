@@ -1,11 +1,10 @@
-"""
-Módulo para cálculos físicos de trayectoria parabólica
-"""
+from typing import Optional, Dict
 import math
-from django.conf import settings
 import numpy as np
+from django.conf import settings
 
-def solve_for(distance: float) -> dict:
+
+def solve_for(distance: float) -> Optional[Dict[str, float]]:
     """
     Calcula el ángulo, velocidad y configuración de bandas para alcanzar una
     distancia específica.
@@ -14,90 +13,84 @@ def solve_for(distance: float) -> dict:
         distance: Distancia objetivo en metros
     
     Returns:
-        dict: Diccionario con los valores calculados:
+        Optional[dict]: Diccionario con los valores calculados o None si no hay solución:
             - angle: Ángulo en grados
             - velocity: Velocidad inicial en m/s
             - n_bands: Número de bandas elásticas necesarias
-            - notch: Índice de la muesca a utilizar
+            - notch_index: Índice de la muesca a utilizar
+            - notch_position: Deformación en metros de la muesca seleccionada
     """
+    # Parámetros físicos
     g = settings.GRAVITY
     angle_min = settings.ANGLE_MIN
     angle_max = settings.ANGLE_MAX
+    angle_step = getattr(settings, 'ANGLE_STEP', 0.5)
+    max_velocity = getattr(settings, 'MAX_VELOCITY', 10.0)
     h0 = settings.INITIAL_HEIGHT  # Altura inicial
     
     best_alpha = None
     best_v = None
-    min_v = float('inf')  # Buscamos la velocidad mínima viable
+    min_v = float('inf')  # Velocidad mínima encontrada
     
-    # Búsqueda del ángulo óptimo con paso de 0.5 grados
-    for alpha_deg in np.arange(angle_min, angle_max + 0.1, 0.5):
+    # Búsqueda del ángulo óptimo
+    for alpha_deg in np.arange(angle_min, angle_max + angle_step/2, angle_step):
         alpha_rad = math.radians(alpha_deg)
-        
-        # Resolver ecuación cuadrática para v considerando altura inicial:
-        # x = (v²/g) * sin(2α) + v * cos(α) * √(2h₀/g)
-        
-        # Primero verificamos si el ángulo es viable (para evitar divisiones por cero)
-        if abs(math.sin(2 * alpha_rad)) < 1e-6:
+        sin2a = math.sin(2 * alpha_rad)
+        if abs(sin2a) < 1e-6:
             continue
-            
-        # Calculamos velocidad para este ángulo
-        term1 = distance / math.sin(2 * alpha_rad)
+
+        # Terminos de la ecuación para despejar v
+        term1 = distance / sin2a
         term2 = math.cos(alpha_rad) * math.sqrt(2 * h0 / g)
-        
-        # La ecuación es: v²/g = term1 - v * term2
-        # Reorganizamos como: v² + g*term2*v - g*term1 = 0
-        # Resolvemos con fórmula cuadrática
+        # v^2 + g*term2*v - g*term1 = 0
         a = 1
         b = g * term2
         c = -g * term1
-        
-        # Calculamos el discriminante
         discriminant = b**2 - 4*a*c
-        
         if discriminant < 0:
-            continue  # No hay solución real
-            
-        # Tomamos la solución positiva menor
-        v1 = (-b + math.sqrt(discriminant)) / (2*a)
-        v2 = (-b - math.sqrt(discriminant)) / (2*a)
-        
-        v = max(0, min(v1, v2) if min(v1, v2) > 0 else max(v1, v2))
-        
-        # Verificamos que sea una velocidad razonable (menor a 10 m/s)
-        if 0 < v < 10 and v < min_v:
+            continue
+
+        v1 = (-b + math.sqrt(discriminant)) / (2 * a)
+        v2 = (-b - math.sqrt(discriminant)) / (2 * a)
+        # Seleccionamos la solución positiva
+        candidates = [v for v in (v1, v2) if v > 0]
+        if not candidates:
+            continue
+        v = min(candidates)
+
+        # Filtrar velocidades razonables
+        if v < max_velocity and v < min_v:
             min_v = v
             best_v = v
             best_alpha = alpha_deg
-    
-    # Si no encontramos solución, retornamos None
+
     if best_alpha is None:
         return None
-    
-    # Calcular número de bandas y muesca
-    notch_index = 0
+
+    # Cálculo de bandas
+    mass = settings.PROJECTILE_MASS / 1000  # convertir g a kg
+    energy_needed = 0.5 * mass * (best_v ** 2)
+
     n_bands = float('inf')
-    
-    # Estimado de masa del proyectil (g)
-    mass = 20.0 / 1000  # 20g convertido a kg
-    
-    # Calculamos energía cinética necesaria
-    energy = 0.5 * mass * (best_v ** 2)
-    
-    # Encontramos la mejor combinación de muesca y bandas
+    notch_index = -1
+    notch_position = None
+
     for i, notch in enumerate(settings.NOTCH_POSITIONS):
-        # Energía almacenada por banda en esta posición
+        # Ignorar muescas sin deformación
+        if notch <= 0:
+            continue
+        # Energía por banda
         energy_per_band = 0.5 * settings.K_ELASTIC * (notch ** 2)
-        
-        # Número de bandas necesarias
-        bands = math.ceil(energy / energy_per_band)
-        
+        bands = math.ceil(energy_needed / energy_per_band)
         if bands < n_bands:
             n_bands = bands
             notch_index = i
-    
+            notch_position = notch
+
     return {
-        'angle': round(best_alpha, 1),
-        'velocity': round(best_v, 2),
-        'n_bands': n_bands,
-        'notch': notch_index
-    } 
+        'angle': float(round(best_alpha, 1)),
+        'velocity': float(round(best_v, 2)),
+        'n_bands': int(n_bands),
+        'notch_index': int(notch_index),
+        'notch_position': float(round(notch_position, 3))
+    }

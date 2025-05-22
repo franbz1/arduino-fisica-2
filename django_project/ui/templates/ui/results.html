@@ -1,0 +1,87 @@
+{% extends 'ui/base.html' %}
+{% load ui_extras %}
+
+{% block title %}Resultados del Cálculo - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Resultados del Cálculo</h2>
+            </div>
+            <div class="card-body">
+                <p class="lead">Parámetros óptimos para una distancia de <strong>{{ params.distance }} metros</strong>:</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Parámetros Físicos</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Ángulo</th>
+                                        <td><strong>{{ params.angle }}°</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Velocidad inicial</th>
+                                        <td>{{ params.velocity }} m/s</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Configuración del Lanzador</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Bandas elásticas</th>
+                                        <td><strong>{{ params.n_bands }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Posición de muesca</th>
+                                        <td>{{ notch_names|index:params.notch }} ({{ params.notch_position }} m)</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h5>Instrucciones:</h5>
+                    <ol>
+                        <li>Configura el lanzador con <strong>{{ params.n_bands }}</strong> bandas elásticas</li>
+                        <li>Coloca las bandas en la muesca <strong>{{ notch_names|index:params.notch }}</strong></li>
+                        <li>Haz clic en "Ajustar Ángulo" para configurar el ángulo de {{ params.angle }}°</li>
+                    </ol>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <form method="post" action="{% url 'ui:set_angle' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Ajustar Ángulo
+                        </button>
+                    </form>
+                    <a href="{% url 'ui:calculate' %}" class="btn btn-outline-secondary">
+                        Calcular otra distancia
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // JavaScript opcional para mostrar animación o información adicional
+</script>
+{% endblock %} 

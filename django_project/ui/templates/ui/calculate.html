@@ -10,14 +10,48 @@
                 <h2>Calcular Parámetros de Lanzamiento</h2>
             </div>
             <div class="card-body">
-                <p class="lead">Esta funcionalidad se implementará próximamente.</p>
-                <div class="alert alert-info">
-                    <p>Aquí se implementará el formulario para calcular los parámetros de lanzamiento en base a la distancia objetivo.</p>
-                </div>
+                <p class="lead">Ingresa la distancia objetivo para calcular los parámetros óptimos de lanzamiento.</p>
                 
-                <a href="{% url 'ui:ping' %}" class="btn btn-primary">
-                    Ir a la Prueba de Conexión
-                </a>
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="distance" class="form-label">Distancia Objetivo (metros)</label>
+                        <input type="number" 
+                               class="form-control form-control-lg" 
+                               id="distance" 
+                               name="distance"
+                               min="{{ min_distance }}" 
+                               max="{{ max_distance }}" 
+                               step="0.01" 
+                               placeholder="1.5"
+                               required>
+                        <div class="form-text">
+                            Ingresa un valor entre {{ min_distance }} y {{ max_distance }} metros.
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Calcular
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="mt-4">
+                    <h5>Parámetros del Sistema:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item">Rango de ángulo: <code>{{ settings.ANGLE_MIN }}° a {{ settings.ANGLE_MAX }}°</code></li>
+                        <li class="list-group-item">Altura inicial: <code>{{ settings.INITIAL_HEIGHT }} metros</code></li>
+                        <li class="list-group-item">Constante elástica (k): <code>{{ settings.K_ELASTIC }} N/m</code></li>
+                        <li class="list-group-item">Posiciones de muescas: 
+                            <ul class="mt-2">
+                                {% for pos in settings.NOTCH_POSITIONS %}
+                                <li>Posición {{ forloop.counter }}: <code>{{ pos }} metros</code></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>

@@ -140,10 +140,13 @@ ANGLE_TOLERANCE = 1.0
 NOTCH_POSITIONS = [0.055, 0.105, 0.165]
 
 # Constante elástica por banda (k) (en N/m)
-K_ELASTIC = 0.0338
+K_ELASTIC = 29.227
 
 # Deformación del resorte (en metros)
 DEFORMATION = 0.0164
+
+# Peso del proyectil (en g)
+PROJECTILE_MASS = 25
 
 # Posiciones de servo para gatillo
 SERVO2_LOADED_POS = 45.0
@@ -157,3 +160,6 @@ INITIAL_HEIGHT = 0.25
 
 # Gravedad (m/s²)
 GRAVITY = 9.80665
+
+# Velocidad máxima del proyectil (m/s)
+MAX_VELOCITY = 10.0
