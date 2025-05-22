@@ -1,0 +1,108 @@
+#ifndef SERVO_CONTROLLER_H
+#define SERVO_CONTROLLER_H
+
+#include <Servo.h>
+#include "settings.h"
+#include "mpu6050_handler.h"
+
+// Pines para los servos
+const int SERVO1_PIN = 9;  // Servo del ángulo
+const int SERVO2_PIN = 10; // Servo del gatillo
+
+// Objetos Servo
+Servo servo1; // Control de ángulo
+Servo servo2; // Control de gatillo/disparo
+
+// Estado actual del sistema
+struct ServoState {
+  float currentAngle;
+  bool isLoaded;
+  bool hasFired;
+};
+
+ServoState state = {0.0, false, false};
+
+// Inicializa los servos
+void setupServos() {
+  servo1.attach(SERVO1_PIN);
+  servo2.attach(SERVO2_PIN);
+  
+  // Posición inicial
+  servo1.write(0);
+  servo2.write(SERVO2_FIRED_POS);
+  
+  delay(500); // Tiempo para que los servos alcancen la posición inicial
+  
+  state.currentAngle = 0.0;
+  state.isLoaded = false;
+  state.hasFired = false;
+}
+
+// Mapeo de ángulos físicos a valores de servo (0-180)
+int mapAngleToServo(float angle) {
+  // Dependiendo de cómo esté montado el servo, 
+  // podría necesitar inversión (180 - resultado)
+  return map(angle, ANGLE_MIN, ANGLE_MAX, 0, 180);
+}
+
+// Mueve el servo al ángulo especificado
+bool moveToAngle(float angle) {
+  // Verificar que el ángulo esté dentro de los límites
+  if (angle < ANGLE_MIN || angle > ANGLE_MAX) {
+    return false;
+  }
+  
+  // Convertir ángulo físico a posición del servo
+  int servoPos = mapAngleToServo(angle);
+  
+  // Mover el servo
+  servo1.write(servoPos);
+  
+  // Esperar hasta que se alcance el ángulo o timeout
+  unsigned long startTime = millis();
+  while (!isAngleReached(angle)) {
+    if (millis() - startTime > SERIAL_TIMEOUT_MS) {
+      return false; // Timeout
+    }
+    delay(10);
+  }
+  
+  // Actualizar el estado
+  state.currentAngle = angle;
+  return true;
+}
+
+// Carga el mecanismo (mueve servo2 a posición de carga)
+bool loadMechanism() {
+  servo2.write(SERVO2_LOADED_POS);
+  
+  // Dar tiempo al servo para llegar a su posición
+  delay(500);
+  
+  // Actualizar estado
+  state.isLoaded = true;
+  state.hasFired = false;
+  
+  return true;
+}
+
+// Dispara el mecanismo (mueve servo2 a posición de disparo)
+bool fireMechanism() {
+  // Verificar que esté cargado antes de disparar
+  if (!state.isLoaded) {
+    return false;
+  }
+  
+  servo2.write(SERVO2_FIRED_POS);
+  
+  // Dar tiempo al servo para completar la acción
+  delay(500);
+  
+  // Actualizar estado
+  state.isLoaded = false;
+  state.hasFired = true;
+  
+  return true;
+}
+
+#endif // SERVO_CONTROLLER_H 
