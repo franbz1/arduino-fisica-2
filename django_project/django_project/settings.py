@@ -133,14 +133,17 @@ SERIAL_TIMEOUT = 2  # segundos
 
 # Constantes físicas del proyecto
 ANGLE_MIN = 0.0
-ANGLE_MAX = 80.0
+ANGLE_MAX = 45.0
 ANGLE_TOLERANCE = 1.0
 
 # Posiciones de muescas para resortes (en metros)
 NOTCH_POSITIONS = [0.10, 0.20, 0.30]
 
 # Constante elástica por banda (k) (en N/m)
-K_ELASTIC = 120.0
+K_ELASTIC = 0.0338
+
+# Deformación del resorte (en metros)
+DEFORMATION = 0.0164
 
 # Posiciones de servo para gatillo
 SERVO2_LOADED_POS = 45.0
@@ -150,7 +153,7 @@ SERVO2_FIRED_POS = 0.0
 BANDS_TOLERANCE = 1.0
 
 # Altura inicial del cañón (m)
-INITIAL_HEIGHT = 0.3
+INITIAL_HEIGHT = 0.25
 
 # Gravedad (m/s²)
-GRAVITY = 9.81
+GRAVITY = 9.80665
