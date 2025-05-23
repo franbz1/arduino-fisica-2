@@ -24,4 +24,6 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/ui/calculate/")),
     # Incluir las URLs de la interfaz de usuario
     path("ui/", include("ui.urls")),
+    # Incluir las URLs del módulo de comunicación
+    path("comm/", include("comm.urls")),
 ]

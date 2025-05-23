@@ -66,6 +66,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "comm.context_processors.connection_status",
             ],
         },
     },
@@ -127,14 +128,14 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Configuraciones específicas para el proyecto de lanzador
-SERIAL_PORT = "COM5"  # Puerto por defecto, cambiar según sistema
+SERIAL_PORT = "COM6"  # Puerto por defecto, cambiar según sistema
 SERIAL_BAUDRATE = 9600
-SERIAL_TIMEOUT = 2  # segundos
+SERIAL_TIMEOUT = 8  # segundos
 
 # Constantes físicas del proyecto
 ANGLE_MIN = 0.0
 ANGLE_MAX = 45.0
-ANGLE_TOLERANCE = 1.0
+ANGLE_TOLERANCE = 5.0
 
 # Posiciones de muescas para resortes (en metros)
 NOTCH_POSITIONS = [0.055, 0.105, 0.165]
@@ -149,7 +150,7 @@ DEFORMATION = 0.0164
 PROJECTILE_MASS = 25
 
 # Posiciones de servo para gatillo
-SERVO2_LOADED_POS = 45.0
+SERVO2_LOADED_POS = 180.0
 SERVO2_FIRED_POS = 0.0
 
 # Tolerancia para calcular número de bandas

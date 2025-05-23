@@ -7,94 +7,102 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header">
-                <h2>Ajuste de Ángulo</h2>
+                <h2>Ajustar Ángulo del Cañón</h2>
             </div>
             <div class="card-body">
+                <div class="mb-3">
+                    <h5>Parámetros Calculados:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item">Distancia objetivo: <strong>{{ params.distance }} m</strong></li>
+                        <li class="list-group-item">Ángulo requerido: <strong>{{ params.angle|floatformat:1 }}°</strong></li>
+                        <li class="list-group-item">Velocidad inicial: <strong>{{ params.velocity|floatformat:2 }} m/s</strong></li>
+                        <li class="list-group-item">Número de bandas: <strong>{{ params.n_bands }}</strong></li>
+                        <li class="list-group-item">Posición de muesca: <strong>{{ params.notch_position|floatformat:3 }} m</strong></li>
+                    </ul>
+                </div>
+
                 {% if angle_set %}
                     <div class="alert alert-success">
                         <h4><i class="bi bi-check-circle-fill"></i> ¡Ángulo Ajustado!</h4>
-                        <p>El cañón ha sido configurado a un ángulo de <strong>{{ params.angle }}°</strong></p>
+                        <p>El cañón ha sido configurado a un ángulo de <strong>{{ params.actual_angle }}°</strong></p>
+                        {% if params.angle != params.actual_angle %}
+                            <p class="small">Nota: Este ángulo difiere ligeramente del ángulo calculado ({{ params.angle }}°) debido a la precisión del sensor.</p>
+                        {% endif %}
                     </div>
                     
-                    <div class="d-grid gap-2 mt-4">
-                        <a href="{% url 'ui:calculate' %}" class="btn btn-outline-secondary">
-                            Volver a calcular
-                        </a>
-                    </div>
-                    
-                {% else %}
-                    <p class="lead">Preparando cañón para disparar a una distancia de <strong>{{ params.distance }} metros</strong></p>
-                    
-                    {% if error %}
-                        <div class="alert alert-danger">
-                            <h4><i class="bi bi-exclamation-triangle-fill"></i> Error al Ajustar Ángulo</h4>
-                            <p>{{ error }}</p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'ui:load' %}" class="btn btn-success btn-lg">
+                                    <i class="bi bi-arrow-right-circle"></i> Cargar Resortes
+                                </a>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <h5>Posibles soluciones:</h5>
-                            <ul>
-                                <li>Verifica que el Arduino esté conectado correctamente</li>
-                                <li>Asegúrate de que el servo esté funcionando</li>
-                                <li>Revisa la configuración del puerto serial en el archivo settings.py</li>
-                            </ul>
-                        </div>
-                    {% endif %}
-                    
-                    <div class="card mb-4">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">Parámetros de Lanzamiento</h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <table class="table table-bordered">
-                                        <tr>
-                                            <th>Distancia</th>
-                                            <td>{{ params.distance }} metros</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Ángulo</th>
-                                            <td><strong>{{ params.angle }}°</strong></td>
-                                        </tr>
-                                    </table>
-                                </div>
-                                <div class="col-md-6">
-                                    <table class="table table-bordered">
-                                        <tr>
-                                            <th>Bandas</th>
-                                            <td>{{ params.n_bands }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Muesca</th>
-                                            <td>{{ params.notch_position }} m</td>
-                                        </tr>
-                                    </table>
-                                </div>
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <form method="post" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-warning btn-lg w-100">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reajustar Ángulo
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="alert alert-warning">
-                        <h5>¡Importante!</h5>
-                        <p>Antes de continuar:</p>
-                        <ol>
-                            <li>Coloca <strong>{{ params.n_bands }}</strong> bandas elásticas y estíralas en la posición de muesca indicada</li>
-                            <li>Asegúrate de que el área frente al cañón esté despejada</li>
-                        </ol>
-                    </div>
-                    
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                Ajustar Ángulo a {{ params.angle }}°
-                            </button>
-                            <a href="{% url 'ui:results' %}" class="btn btn-outline-secondary">
-                                Volver a Resultados
-                            </a>
+                {% else %}
+                    {% if not is_serial_connected %}
+                        <div class="alert alert-warning">
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i> Sin Conexión</h4>
+                            <p>No hay conexión con el Arduino. Conecta primero usando el panel superior.</p>
                         </div>
-                    </form>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                <i class="bi bi-gear"></i> Ajustar Ángulo
+                            </button>
+                        </div>
+                    {% else %}
+                        {% if error %}
+                            <div class="alert alert-danger">
+                                <h4><i class="bi bi-exclamation-triangle-fill"></i> Error</h4>
+                                <p>{{ error }}</p>
+                                {% if current_angle %}
+                                    <p>Ángulo actual del cañón: <strong>{{ current_angle|floatformat:1 }}°</strong></p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        <div class="alert alert-info">
+                            <h4><i class="bi bi-info-circle-fill"></i> Instrucciones</h4>
+                            <p>Al presionar el botón, el Arduino:</p>
+                            <ol>
+                                <li>Moverá el servo del cañón al ángulo calculado</li>
+                                <li>Usará el MPU6050 para verificar la posición exacta</li>
+                                <li>Reportará el ángulo real alcanzado</li>
+                            </ol>
+                            <p class="mb-0"><strong>Asegúrate de que el mecanismo esté libre y pueda moverse sin obstáculos.</strong></p>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-gear"></i> Ajustar Ángulo a {{ params.angle|floatformat:1 }}°
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
                 {% endif %}
+
+                <div class="mt-3">
+                    <a href="{% url 'ui:results' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Volver a Resultados
+                    </a>
+                    <a href="{% url 'ui:reset' %}" class="btn btn-outline-danger ms-2">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reiniciar Todo
+                    </a>
+                </div>
             </div>
         </div>
     </div>

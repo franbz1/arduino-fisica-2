@@ -12,4 +12,6 @@ urlpatterns = [
     path('results/', views.results_view, name='results'),
     # Ruta para ajustar ángulo
     path('set-angle/', views.set_angle_view, name='set_angle'),
+    path('load/', views.load_view, name='load'),
+    path('reset/', views.reset_view, name='reset'),
 ] 

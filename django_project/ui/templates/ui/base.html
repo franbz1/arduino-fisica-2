@@ -6,6 +6,8 @@
     <title>{% block title %}Sistema de Lanzamiento de Proyectiles{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
             padding-top: 2rem;
@@ -23,24 +25,106 @@
             text-align: center;
             color: #777;
         }
+        .connection-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        .status-connected {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .status-disconnected {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .btn-connection {
+            margin: 0.2rem;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Sistema de Lanzamiento de Proyectiles</h1>
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1>Sistema de Lanzamiento de Proyectiles</h1>
+                </div>
+                <div class="col-md-6">
+                    <!-- Panel de Control de Conexión -->
+                    <div class="connection-panel">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="status-indicator {% if is_serial_connected %}status-connected{% else %}status-disconnected{% endif %}"></span>
+                                <strong>Arduino:</strong>
+                                <span id="connection-status">
+                                    {% if is_serial_connected %}
+                                        Conectado ({{ connection_status.port }})
+                                    {% else %}
+                                        Desconectado
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="btn-group btn-group-sm" role="group">
+                                {% if is_serial_connected %}
+                                    <button type="button" class="btn btn-outline-success btn-connection" id="btn-test" title="Probar conexión">
+                                        <i class="bi bi-wifi"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-connection" id="btn-disconnect" title="Desconectar">
+                                        <i class="bi bi-plug"></i>
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-primary btn-connection" id="btn-connect" title="Conectar">
+                                        <i class="bi bi-plug-fill"></i>
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Información adicional cuando está conectado -->
+                        {% if is_serial_connected and connection_status.last_test_result %}
+                        <div class="mt-2 small text-muted">
+                            Último test: 
+                            {% if connection_status.last_test_result.success %}
+                                <span class="text-success">OK ({{ connection_status.last_test_result.response_time }}ms)</span>
+                            {% else %}
+                                <span class="text-danger">Error</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
             <nav class="nav">
-                <a class="nav-link" href="{% url 'ui:ping' %}">Prueba de Conexión</a>
-                <a class="nav-link" href="{% url 'ui:calculate' %}">Calcular Lanzamiento</a>
+                <a class="nav-link" href="{% url 'ui:calculate' %}">1. Calcular</a>
+                <a class="nav-link" href="{% url 'ui:results' %}">2. Resultados</a>
+                <a class="nav-link" href="{% url 'ui:set_angle' %}">3. Ángulo</a>
+                <a class="nav-link" href="{% url 'ui:load' %}">4. Cargar/Disparar</a>
+                <a class="nav-link" href="{% url 'ui:ping' %}">Prueba Conexión</a>
             </nav>
         </div>
 
         {% if messages %}
         <div class="messages">
             {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
                 {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
             {% endfor %}
         </div>
@@ -58,6 +142,122 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Control de Conexión JavaScript -->
+    <script>
+        // Obtener token CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        const csrftoken = getCookie('csrftoken');
+        
+        // Funciones para controlar la conexión
+        async function connectArduino() {
+            const btn = document.getElementById('btn-connect');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+            
+            try {
+                const response = await fetch('/comm/connect/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    location.reload(); // Recargar para actualizar el estado
+                } else {
+                    alert('Error: ' + result.error);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-plug-fill"></i>';
+                }
+            } catch (error) {
+                alert('Error de conexión: ' + error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plug-fill"></i>';
+            }
+        }
+        
+        async function disconnectArduino() {
+            const btn = document.getElementById('btn-disconnect');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+            
+            try {
+                const response = await fetch('/comm/disconnect/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                location.reload(); // Recargar para actualizar el estado
+            } catch (error) {
+                alert('Error: ' + error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-plug"></i>';
+            }
+        }
+        
+        async function testConnection() {
+            const btn = document.getElementById('btn-test');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+            
+            try {
+                const response = await fetch('/comm/test/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const result = await response.json();
+                
+                // Actualizar indicador visual
+                setTimeout(() => {
+                    location.reload(); // Recargar para mostrar resultado del test
+                }, 1000);
+                
+            } catch (error) {
+                alert('Error: ' + error);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-wifi"></i>';
+            }
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const btnConnect = document.getElementById('btn-connect');
+            const btnDisconnect = document.getElementById('btn-disconnect');
+            const btnTest = document.getElementById('btn-test');
+            
+            if (btnConnect) btnConnect.addEventListener('click', connectArduino);
+            if (btnDisconnect) btnDisconnect.addEventListener('click', disconnectArduino);
+            if (btnTest) btnTest.addEventListener('click', testConnection);
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html> 

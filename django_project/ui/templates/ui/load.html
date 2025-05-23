@@ -1,0 +1,229 @@
+{% extends 'ui/base.html' %}
+
+{% block title %}Cargar y Disparar - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Cargar y Disparar Cañón</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h5>Estado del Sistema:</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Distancia objetivo
+                            <span class="badge bg-primary rounded-pill">{{ params.distance }} m</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Ángulo del cañón
+                            {% if params.actual_angle %}
+                                <span class="badge bg-success rounded-pill">{{ params.actual_angle|floatformat:1 }}° ✓</span>
+                            {% else %}
+                                <span class="badge bg-warning rounded-pill">No configurado</span>
+                            {% endif %}
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Número de bandas
+                            <span class="badge bg-info rounded-pill">{{ params.n_bands }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Posición de muesca
+                            <span class="badge bg-info rounded-pill">{{ params.notch_position|floatformat:3 }} m</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Estado del mecanismo
+                            {% if params.loaded %}
+                                <span class="badge bg-success">Cargado ✓</span>
+                            {% elif params.fired %}
+                                <span class="badge bg-secondary">Disparado</span>
+                            {% else %}
+                                <span class="badge bg-warning">Sin cargar</span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                </div>
+
+                {% if params.fired %}
+                    <div class="alert alert-success">
+                        <h4><i class="bi bi-check-circle-fill"></i> ¡Disparo Ejecutado!</h4>
+                        <p>El comando de disparo se ha enviado exitosamente al Arduino.</p>
+                        <p>¡El proyectil ha sido lanzado hacia el objetivo!</p>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'ui:reset' %}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Nuevo Lanzamiento
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'ui:calculate' %}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="bi bi-calculator"></i> Calcular Nueva Distancia
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                {% elif loaded %}
+                    <div class="alert alert-success">
+                        <h4><i class="bi bi-check-circle-fill"></i> ¡Mecanismo Cargado!</h4>
+                        <p>El servo del gatillo está en posición de carga. ¡Listo para disparar!</p>
+                    </div>
+
+                    {% if not is_serial_connected %}
+                        <div class="alert alert-warning">
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i> Sin Conexión</h4>
+                            <p>No hay conexión con el Arduino. Conecta primero usando el panel superior.</p>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                <i class="bi bi-target"></i> Disparar
+                            </button>
+                        </div>
+                    {% else %}
+                        {% if error %}
+                            <div class="alert alert-danger">
+                                <h4><i class="bi bi-exclamation-triangle-fill"></i> Error al Disparar</h4>
+                                <p>{{ error }}</p>
+                            </div>
+                        {% endif %}
+
+                        <div class="alert alert-warning">
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i> ¡Verificación Final!</h4>
+                            <p>Asegúrate de que el área frente al cañón esté despejada antes de disparar.</p>
+                        </div>
+
+                        <!-- Área de cuenta regresiva -->
+                        <div id="countdown-area" style="display: none;">
+                            <div class="alert alert-danger text-center">
+                                <h3>DISPARANDO EN:</h3>
+                                <h1 id="countdown-number" class="display-1">5</h1>
+                                <button type="button" class="btn btn-warning btn-lg mt-3" onclick="cancelCountdown()">
+                                    <i class="bi bi-x-circle"></i> CANCELAR
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Formulario de disparo -->
+                        <div id="fire-form">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-danger btn-lg" onclick="startCountdown()">
+                                            <i class="bi bi-target"></i> ¡DISPARAR!
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-grid gap-2">
+                                        <a href="{% url 'ui:reset' %}" class="btn btn-outline-warning btn-lg">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Cancelar
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario oculto para envío real -->
+                        <form id="hidden-fire-form" method="post" style="display: none;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="fire">
+                        </form>
+                    {% endif %}
+                    
+                {% else %}
+                    {% if not is_serial_connected %}
+                        <div class="alert alert-warning">
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i> Sin Conexión</h4>
+                            <p>No hay conexión con el Arduino. Conecta primero usando el panel superior.</p>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                <i class="bi bi-hourglass"></i> Cargar Mecanismo
+                            </button>
+                        </div>
+                    {% else %}
+                        {% if error %}
+                            <div class="alert alert-danger">
+                                <h4><i class="bi bi-exclamation-triangle-fill"></i> Error al Cargar</h4>
+                                <p>{{ error }}</p>
+                            </div>
+                        {% endif %}
+
+                        <div class="alert alert-warning">
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i> Preparación Manual</h4>
+                            <p><strong>Antes de cargar:</strong></p>
+                            <ul>
+                                <li>Coloca {{ params.n_bands }} bandas elásticas en el cañón</li>
+                                <li>Estira las bandas hasta la muesca: {{ params.notch_position|floatformat:3 }} m</li>
+                                <li>Coloca el proyectil (canica) correctamente</li>
+                            </ul>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="load">
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-warning btn-lg">
+                                    <i class="bi bi-hourglass"></i> Cargar Mecanismo
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                {% endif %}
+
+                <div class="mt-3">
+                    <a href="{% url 'ui:set_angle' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Volver a Ángulo
+                    </a>
+                    <a href="{% url 'ui:reset' %}" class="btn btn-outline-danger ms-2">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reiniciar Todo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let countdownTimer;
+let countdownNumber = 5;
+
+function startCountdown() {
+    // Ocultar botón de disparo y mostrar cuenta regresiva
+    document.getElementById('fire-form').style.display = 'none';
+    document.getElementById('countdown-area').style.display = 'block';
+    
+    countdownNumber = 5;
+    document.getElementById('countdown-number').textContent = countdownNumber;
+    
+    countdownTimer = setInterval(function() {
+        countdownNumber--;
+        document.getElementById('countdown-number').textContent = countdownNumber;
+        
+        if (countdownNumber <= 0) {
+            clearInterval(countdownTimer);
+            // Ejecutar disparo
+            document.getElementById('hidden-fire-form').submit();
+        }
+    }, 1000);
+}
+
+function cancelCountdown() {
+    clearInterval(countdownTimer);
+    // Mostrar botón de disparo y ocultar cuenta regresiva
+    document.getElementById('countdown-area').style.display = 'none';
+    document.getElementById('fire-form').style.display = 'block';
+}
+</script>
+{% endblock %} 

@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "settings.h"
 #include "serial_handler.h"
+#include "mpu6050_handler.h"
+#include "servo_controller.h"
 
 // LED indicador para estados
 const int STATUS_LED = 13;
@@ -8,6 +10,11 @@ const int STATUS_LED = 13;
 // Tiempo mínimo entre lecturas de comandos (ms)
 const unsigned long CMD_INTERVAL = 50;
 unsigned long lastCmdTime = 0;
+
+// Variables para respuestas
+char responseMsg[50];
+bool loadSuccess = false;
+bool fireSuccess = false;
 
 void setup() {
   // Inicializar LED de estado
@@ -17,11 +24,23 @@ void setup() {
   // Inicializar comunicación serial
   setupSerial();
   
+  // Inicializar MPU6050
+  if (!setupMPU6050()) {
+    // Parpadear LED para indicar error de MPU
+    sendResponse("ERROR_MPU_INIT");
+    while (true) {
+      digitalWrite(STATUS_LED, HIGH);
+      delay(200);
+      digitalWrite(STATUS_LED, LOW);
+      delay(200);
+    }
+  }
+  
+  // Inicializar servos
+  setupServos();
+  
   // Todo inicializado correctamente
   digitalWrite(STATUS_LED, LOW);
-  
-  // Mensaje de bienvenida
-  Serial.println("Sistema listo para recibir comandos");
 }
 
 void loop() {
@@ -45,27 +64,65 @@ void loop() {
       case CMD_SET_ANGLE:
         // Verificar límites de ángulo
         if (cmd.value < ANGLE_MIN || cmd.value > ANGLE_MAX) {
-          sendResponse("ANGLE_ERR");
+          snprintf(responseMsg, sizeof(responseMsg), "ANGLE_ERR:RANGE_EXCEEDED_%.1f", (double)cmd.value);
+          sendResponse(responseMsg);
         } else {
-          // Por ahora, solo confirmamos que recibimos el comando sin mover el servo
-          sendResponse("ANGLE_OK");
-          Serial.print("Ángulo recibido: ");
-          Serial.println(cmd.value);
+          // Encender LED para indicar que se está ajustando
+          digitalWrite(STATUS_LED, HIGH);
+          
+          // Intentar mover al ángulo
+          bool success = moveToAngle(cmd.value);
+          
+          // Obtener ángulo actual del MPU
+          float currentAngle = getCurrentAngle();
+          
+          char angleBuf[10];
+          dtostrf(currentAngle, 5, 1, angleBuf);
+
+          // Apagar LED al terminar
+          digitalWrite(STATUS_LED, LOW);
+          
+          // Enviar respuesta con ángulo actual
+          if (success) {
+            snprintf(responseMsg, sizeof(responseMsg), "ANGLE_OK:%s", angleBuf);
+            sendResponse(responseMsg);
+          } else {
+            snprintf(responseMsg, sizeof(responseMsg), "ANGLE_ERR:TIMEOUT_%s", angleBuf);
+            sendResponse(responseMsg);
+          }
         }
         break;
         
       case CMD_LOAD:
-        // Solo confirmamos el comando, sin controlar servos
-        sendResponse("LOAD_OK");
+        // Encender LED para indicar acción
+        digitalWrite(STATUS_LED, HIGH);
+        
+        // Cargar mecanismo
+        loadSuccess = loadMechanism();
+        
+        // Apagar LED al terminar
+        digitalWrite(STATUS_LED, LOW);
+        
+        // Enviar respuesta
+        sendResponse(loadSuccess ? "LOAD_OK" : "LOAD_ERR");
         break;
         
       case CMD_FIRE:
-        // Solo confirmamos el comando, sin controlar servos
-        sendResponse("FIRE_OK");
+        // Encender LED para indicar acción
+        digitalWrite(STATUS_LED, HIGH);
+        
+        // Disparar mecanismo
+        fireSuccess = fireMechanism();
+        
+        // Apagar LED al terminar
+        digitalWrite(STATUS_LED, LOW);
+        
+        // Enviar respuesta
+        sendResponse(fireSuccess ? "FIRE_OK" : "FIRE_ERR");
         break;
         
       case CMD_NONE:
-        // Ningún comando recibido
+        // No hacer nada
         break;
     }
   }

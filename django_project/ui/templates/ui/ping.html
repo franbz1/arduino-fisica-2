@@ -10,44 +10,58 @@
                 <h2>Prueba de Comunicación Serial</h2>
             </div>
             <div class="card-body">
-                <p class="lead">Esta página te permite comprobar la conexión con el Arduino enviando un comando PING.</p>
+                {% if is_serial_connected %}
+                    <div class="alert alert-info">
+                        <h4><i class="bi bi-info-circle-fill"></i> Conexión Activa</h4>
+                        <p>Hay una conexión activa con el Arduino en <strong>{{ connection_status.port }}</strong>.</p>
+                        <p>Puedes usar el botón de abajo para probar la comunicación o utilizar los controles del panel superior.</p>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Sin Conexión</h4>
+                        <p>No hay una conexión activa con el Arduino.</p>
+                        <p>Usa el <strong>Panel de Control de Conexión</strong> en la parte superior para conectar primero.</p>
+                    </div>
+                {% endif %}
                 
                 {% if connected %}
                     <div class="alert alert-success">
-                        <h4><i class="bi bi-check-circle-fill"></i> ¡Conexión Exitosa!</h4>
+                        <h4><i class="bi bi-check-circle-fill"></i> ¡Test Exitoso!</h4>
                         <p>El Arduino respondió correctamente con <strong>{{ response }}</strong></p>
-                    </div>
-                {% elif raw_response %}
-                    <div class="alert alert-warning">
-                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Respuesta Incorrecta</h4>
-                        <p>El Arduino respondió pero no envió "PONG".</p>
-                        <p>Respuesta recibida: <code>"{{ raw_response }}"</code></p>
                     </div>
                 {% elif error %}
                     <div class="alert alert-danger">
-                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Error de Conexión</h4>
+                        <h4><i class="bi bi-exclamation-triangle-fill"></i> Error en el Test</h4>
                         <p>{{ error }}</p>
                     </div>
                 {% endif %}
                 
                 <div class="mb-3">
-                    <h5>Posibles soluciones si hay problemas:</h5>
-                    <ul>
-                        <li>Verifica que el Arduino esté conectado al puerto correcto</li>
-                        <li>Asegúrate de que el código correcto esté cargado en el Arduino</li>
-                        <li>Revisa la configuración del puerto serial en el archivo settings.py</li>
-                        <li>Verifica que no haya caracteres adicionales en la respuesta (como espacios o saltos de línea)</li>
-                    </ul>
+                    <h5>Instrucciones:</h5>
+                    <ol>
+                        <li><strong>Conectar:</strong> Usa el botón "Conectar" en el panel superior para establecer la conexión</li>
+                        <li><strong>Probar:</strong> Una vez conectado, puedes probar la comunicación con el botón de abajo o el botón "Test" del panel</li>
+                        <li><strong>Desconectar:</strong> Usa el botón "Desconectar" del panel cuando termines</li>
+                    </ol>
                 </div>
                 
+                {% if is_serial_connected %}
                 <form method="post" class="mt-4">
                     {% csrf_token %}
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
-                            Enviar PING al Arduino
+                            <i class="bi bi-wifi"></i> Probar Comunicación (PING)
                         </button>
                     </div>
                 </form>
+                {% else %}
+                <div class="d-grid gap-2 mt-4">
+                    <button type="button" class="btn btn-secondary btn-lg" disabled>
+                        <i class="bi bi-wifi"></i> Probar Comunicación (PING)
+                    </button>
+                    <small class="text-muted text-center">Conecta primero usando el panel superior</small>
+                </div>
+                {% endif %}
                 
                 <div class="mt-4">
                     <h5>Configuración Actual:</h5>
@@ -55,6 +69,33 @@
                         <li class="list-group-item">Puerto Serial: <code>{{ settings.SERIAL_PORT }}</code></li>
                         <li class="list-group-item">Baudrate: <code>{{ settings.SERIAL_BAUDRATE }}</code></li>
                         <li class="list-group-item">Timeout: <code>{{ settings.SERIAL_TIMEOUT }} segundos</code></li>
+                    </ul>
+                </div>
+                
+                {% if ports_available %}
+                <div class="mt-4">
+                    <h5>Puertos Disponibles:</h5>
+                    <ul class="list-group">
+                        {% for port in ports_available %}
+                        <li class="list-group-item {% if port == settings.SERIAL_PORT %}list-group-item-primary{% endif %}">
+                            {{ port }} {% if port == settings.SERIAL_PORT %}<span class="badge bg-primary">Configurado</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="mt-2 small text-muted">
+                        Para cambiar el puerto, edita la variable SERIAL_PORT en el archivo <code>django_project/settings.py</code>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mt-4">
+                    <h5>Solución de Problemas:</h5>
+                    <ul>
+                        <li>Verifica que el Arduino esté conectado correctamente</li>
+                        <li>Asegúrate de que el código correcto esté cargado en el Arduino</li>
+                        <li>Revisa la configuración del puerto serial en settings.py</li>
+                        <li>Cierra otras aplicaciones que puedan estar usando el puerto serial</li>
+                        <li>Si el puerto está bloqueado, reinicia el Arduino y/o la aplicación</li>
                     </ul>
                 </div>
             </div>
